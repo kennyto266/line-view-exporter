@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 6, 0),
+    "version": (1, 7, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -204,6 +204,11 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         description="Emit each line as its own path so every line can be selected, "
                     "moved and stretched individually in Illustrator/Inkscape",
         default=True)
+    size_labels: BoolProperty(
+        name="Size Label Per Object",
+        description="Label every object with its W x H size (in the dimension unit); "
+                    "the label travels with the piece",
+        default=True)
 
     def draw(self, context):
         layout = self.layout
@@ -236,6 +241,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.prop(self, "outline_only")
         box.prop(self, "max_segs")
         box.prop(self, "separate_segs")
+        box.prop(self, "size_labels")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -399,14 +405,22 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     filt.append((x1, y1, x2, y2))
                 if not filt:
                     continue
+                uifac_l, _uilab = _unit_info(self.unit_label, context.scene)
                 if self.separate_segs:
                     out.append("<g id='%s'>\n" % _xml_escape(nm))
+                    xs0 = min(f[0] for f in filt); xs1 = max(f[2] for f in filt)
+                    ys0 = min(f[1] for f in filt); ys1 = max(f[3] for f in filt)
                     for i, (x1, y1, x2, y2) in enumerate(filt, 1):
                         out.append(
                             "<path id='%s_%d' d='M%.3f %.3f L%.3f %.3f'/>\n"
                             % (_xml_escape(nm), i,
                                x1 * sc + ox, y1 * sc + oy,
                                x2 * sc + ox, y2 * sc + oy))
+                    if self.size_labels and ((xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0):
+                        out.append(
+                            "<text x='%.3f' y='%.3f' font-family='Arial' font-size='5.5' fill='#888888'>%.1f x %.1f</text>\n"
+                            % (xs0, ys0 - 1.5,
+                               (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
                     out.append("</g>\n")
                 else:
                     out.append("<path id='%s' d='" % _xml_escape(nm))
@@ -415,6 +429,14 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                             x1 * sc + ox, y1 * sc + oy,
                             x2 * sc + ox, y2 * sc + oy))
                     out.append("'/>\n")
+                    if self.size_labels:
+                        xs0 = min(f[0] for f in filt); xs1 = max(f[2] for f in filt)
+                        ys0 = min(f[1] for f in filt); ys1 = max(f[3] for f in filt)
+                        if (xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0:
+                            out.append(
+                                "<text x='%.3f' y='%.3f' font-family='Arial' font-size='5.5' fill='#888888'>%.1f x %.1f</text>\n"
+                                % (xs0, ys0 - 1.5,
+                                   (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
 
         for v in views:
             sc = v['sc']
