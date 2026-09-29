@@ -1,3 +1,7 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
 # MAXScript backup droppings
 *.bak
 *.ms.bak
