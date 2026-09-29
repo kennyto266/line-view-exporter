@@ -424,7 +424,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     if self.size_labels and ((xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0):
                         out.append(
                             "<text x='%.3f' y='%.3f' font-family='Arial' font-size='%.2f' fill='#888888'>%.1f x %.1f</text>\n"
-                            % (self.lbl_size, xs0, ys0 - 1.5,
+                            % (xs0, ys0 - 1.5, self.lbl_size,
                                (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
                     out.append("</g>\n")
                 else:
@@ -440,7 +440,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                         if (xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0:
                             out.append(
                                 "<text x='%.3f' y='%.3f' font-family='Arial' font-size='%.2f' fill='#888888'>%.1f x %.1f</text>\n"
-                                % (self.lbl_size, xs0, ys0 - 1.5,
+                                % (xs0, ys0 - 1.5, self.lbl_size,
                                    (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
 
         for v in views:

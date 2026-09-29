@@ -412,7 +412,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 									li += 1
 								)
 								if sizeLabels and ((bx1 - bx0) >= 6.0 or (by1 - by0) >= 6.0) do
-									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 lblSize) (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
+									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt3 lblSize) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
 								format "</g>" to:f
 							)
 							else
@@ -430,7 +430,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 								)
 								format "'/>\n" to:f
 								if sizeLabels and ((bx1 - bx0) >= 6.0 or (by1 - by0) >= 6.0) do
-									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 lblSize) (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
+									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt3 lblSize) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
 							)
 						)
 						format "</g>\n" to:f
