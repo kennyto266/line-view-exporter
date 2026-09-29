@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 5, 0),
+    "version": (1, 6, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -400,12 +400,14 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                 if not filt:
                     continue
                 if self.separate_segs:
+                    out.append("<g id='%s'>\n" % _xml_escape(nm))
                     for i, (x1, y1, x2, y2) in enumerate(filt, 1):
                         out.append(
                             "<path id='%s_%d' d='M%.3f %.3f L%.3f %.3f'/>\n"
                             % (_xml_escape(nm), i,
                                x1 * sc + ox, y1 * sc + oy,
                                x2 * sc + ox, y2 * sc + oy))
+                    out.append("</g>\n")
                 else:
                     out.append("<path id='%s' d='" % _xml_escape(nm))
                     for x1, y1, x2, y2 in filt:

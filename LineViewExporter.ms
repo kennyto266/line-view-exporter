@@ -391,12 +391,14 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							local useg = LV_capSegs oseg.segs maxSegs vd.sc
 							if separateSegs then
 							(
+								format "<g id='%'>" (LV_xmlEscape oseg.name) to:f
 								local li = 1
 								for s in useg where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 								(
 									format "<path id='%' d='M% % L% %'/>\n" (LV_xmlEscape (oseg.name + "_" + (li as string))) (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 									li += 1
 								)
+								format "</g>" to:f
 							)
 							else
 							(
@@ -415,12 +417,14 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 								local uhid = LV_capSegs oseg.segs maxSegs vd.sc
 								if separateSegs then
 								(
+									format "<g id='%'>" (LV_xmlEscape (oseg.name + "_hid")) to:f
 									local hi2 = 1
 									for s in uhid where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 									(
 										format "<path id='%' d='M% % L% %'/>\n" (LV_xmlEscape (oseg.name + "_hid_" + (hi2 as string))) (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 										hi2 += 1
 									)
+									format "</g>" to:f
 								)
 								else
 								(
