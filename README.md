@@ -59,7 +59,8 @@ Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder,
 - **Stroke weight (default 0.5 pt)** — line weight in Illustrator.
 - **Drop lines shorter (default 0.4 pt)** — segments smaller than this on the sheet are skipped; kills sub-pixel speckle noise from huge or noisy scenes.
 - **Draw open (border) edges** — uncheck if a broken/open mesh floods the sheet with wireframe.
-- **Dimension annotations (default on)** — width/height dimension lines with arrows and a number (in scene units) for every view; set the **unit label** (e.g. `mm`, `cm`) so the numbers read the way you want.
+- **Dimension annotations (default on)** — width/height dimension lines with arrows and a number for every view. Numbers are **real-world 1:1**: the tool reads the scene's system unit automatically (mm/cm/m/inch) — leave the unit label as `units` to use it as-is, or type `mm` / `cm` / `m` to convert.
+- **Every line = own path (default on)** — each segment is exported as its own `<path>`, so in Illustrator/Inkscape every single line can be selected, moved and stretched individually. Turn off to get one combined path per object instead.
 - **Outline only** — silhouettes and border edges only, no crease lines. Round things (cylinders, wheels, pipes) come out as clean circle outlines instead of dense hatching; boxes become plain rectangles. Use this for clean blueprint-style drawings.
 - **Include hidden edges** — dashed grey lines for back-facing outlines/creases.
 - **Flip facing test** — if the output looks inside-out (flipped mesh normals), tick this; no need to fix the model.
@@ -161,7 +162,8 @@ A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-mil
 - **Stroke weight(預設 0.5pt)**:Illustrator 入面嘅線粗。
 - **Drop lines shorter(預設 0.4pt)**:紙上細過呢個長度嘅線段會跳過,過濾亞像素碎屑。
 - **Draw open edges**:破 mesh 爛開口邊氾濫嘅話可以關掉。
-- **Dimension annotations(預設開)**:每個 view 自動加工程圖則式尺寸線(箭嘴 + 數字,場景單位);**Unit label** 可以自訂(例如 `mm`、`cm`)。
+- **Dimension annotations(預設開)**:每個 view 自動加工程圖則式尺寸線(箭嘴 + 數字)。數字係**真實 1:1**:工具會自動讀場景 system unit(mm/cm/m/吋)— Unit label 照用 `units` 就係場景單位原值,或者填 `mm` / `cm` / `m` 自動換算。
+- **Every line = own path(預設開)**:每條線段各自一個 path — 喺 Illustrator/Inkscape 入面每一條線都可以單獨揀、單獨郁、單獨拉長拉短。關掉就變返一件物件一個合併 path。
 - **Outline only(淨輪廓)**:只畫 silhouette 同開口邊,唔畀 crease 線 — 圓形嘢(圓柱、輪、喉管)會出乾淨圓圈輪廓,唔會變黑影;盒就出淨矩形。想要藍圖風清爽線稿就用呢個。
 - **Include hidden edges**:背向嘅開口邊/硬邊以灰色虛線表示。
 - **Flip facing test**:線圖「內外反轉」(mesh normals 翌咗)就勾呢個,唔使修 model。

@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 4, 0),
+    "version": (1, 5, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -99,6 +99,37 @@ def _seg_bounds(items):
     return x0, y0, x1, y1
 
 
+
+def _unit_info(unit_label, scene):
+    """Return (factor, label): scene units * factor = value in the label unit.
+    "units"/empty -> auto label from the scene unit settings (1:1);
+    "mm"/"cm"/"m" -> convert from the scene unit."""
+    us = getattr(scene, "unit_settings", None)
+    sysname = "units"
+    mm_per = 1.0
+    if us is not None:
+        if us.system == 'METRIC':
+            mm_per = us.scale_length * 1000.0
+            if abs(mm_per - 1.0) < 1e-6:
+                sysname = "mm"
+            elif abs(mm_per - 10.0) < 1e-6:
+                sysname = "cm"
+            else:
+                sysname = "m"
+        elif us.system == 'IMPERIAL':
+            mm_per = us.scale_length * 304.8
+            sysname = "in"
+    u = (unit_label or "").lower()
+    if u == "mm":
+        return mm_per, "mm"
+    if u == "cm":
+        return mm_per / 10.0, "cm"
+    if u == "m":
+        return mm_per / 1000.0, "m"
+    return 1.0, sysname
+
+
+
 class LINEVIEW_OT_export_svg(Operator, ExportHelper):
     """Export Front/Right/Top line views of selected meshes as an editable SVG blueprint for Adobe Illustrator"""
     bl_idname = "export.lineview_svg"
@@ -168,6 +199,11 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         description="Per-object cap on written segments, keeping the longest ones "
                     "(0 = unlimited). Tames dense machinery/lattice clusters.",
         default=0, min=0, max=100000)
+    separate_segs: BoolProperty(
+        name="Every Line = Own Path",
+        description="Emit each line as its own path so every line can be selected, "
+                    "moved and stretched individually in Illustrator/Inkscape",
+        default=True)
 
     def draw(self, context):
         layout = self.layout
@@ -199,6 +235,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.prop(self, "unit_label")
         box.prop(self, "outline_only")
         box.prop(self, "max_segs")
+        box.prop(self, "separate_segs")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -354,17 +391,27 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                         segs,
                         key=lambda s: (s[1][0] - s[0][0]) ** 2 + (s[1][1] - s[0][1]) ** 2,
                         reverse=True)[:self.max_segs]
-                body = []
+                filt = []
                 for (x1, y1), (x2, y2) in useg:
                     if self.min_pt > 0.0:
                         if math.hypot((x2 - x1) * sc, (y2 - y1) * sc) < self.min_pt:
                             continue
-                    body.append("M%.3f %.3f L%.3f %.3f " % (
-                        x1 * sc + ox, y1 * sc + oy,
-                        x2 * sc + ox, y2 * sc + oy))
-                if body:
+                    filt.append((x1, y1, x2, y2))
+                if not filt:
+                    continue
+                if self.separate_segs:
+                    for i, (x1, y1, x2, y2) in enumerate(filt, 1):
+                        out.append(
+                            "<path id='%s_%d' d='M%.3f %.3f L%.3f %.3f'/>\n"
+                            % (_xml_escape(nm), i,
+                               x1 * sc + ox, y1 * sc + oy,
+                               x2 * sc + ox, y2 * sc + oy))
+                else:
                     out.append("<path id='%s' d='" % _xml_escape(nm))
-                    out.append(''.join(body))
+                    for x1, y1, x2, y2 in filt:
+                        out.append("M%.3f %.3f L%.3f %.3f " % (
+                            x1 * sc + ox, y1 * sc + oy,
+                            x2 * sc + ox, y2 * sc + oy))
                     out.append("'/>\n")
 
         for v in views:
@@ -399,9 +446,10 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                 y0 = v['bb'][1] * sc + oy
                 y1 = v['bb'][3] * sc + oy
                 dimcol = '#555555'
-                ulab = _xml_escape(self.unit_label)
-                wu = v['bb'][2] - v['bb'][0]
-                hu = v['bb'][3] - v['bb'][1]
+                uifac, uilab = _unit_info(self.unit_label, context.scene)
+                ulab = _xml_escape(uilab)
+                wu = (v['bb'][2] - v['bb'][0]) * uifac
+                hu = (v['bb'][3] - v['bb'][1]) * uifac
 
                 def _arrow(tx, ty, ux, uy):
                     bx2 = tx - ux * 7.0
@@ -449,14 +497,16 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                         % (dlx - 3.0, (y0 + y1) / 2.0, dlx - 3.0, (y0 + y1) / 2.0,
                            dimcol, hu, ulab))
 
-        # scale bar
+        # scale bar (in target units)
+        uifac, uilab = _unit_info(self.unit_label, context.scene)
+        eff_pt = sc * uifac
         nice_l = 1.0
         for k in range(-6, 7):
             for b in (1.0, 2.0, 5.0):
                 L = b * (10.0 ** k)
-                if 40.0 <= L * sc <= 160.0:
+                if 40.0 <= L * eff_pt <= 160.0:
                     nice_l = L
-        bar_px = nice_l * sc
+        bar_px = nice_l * eff_pt
         if bar_px <= pagew - 2 * m:
             bx = pagew - m - bar_px
             by = pageh - 10.0
@@ -470,8 +520,8 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
             out.append("</g>\n")
             out.append(
                 "<text x='%.3f' y='%.3f' font-family='Arial' font-size='8' "
-                "text-anchor='middle' fill='#000000'>%g units</text>\n"
-                % (bx + bar_px / 2.0, by - 5.0, nice_l))
+                "text-anchor='middle' fill='#000000'>%g %s</text>\n"
+                % (bx + bar_px / 2.0, by - 5.0, nice_l, uilab))
 
         out.append("</svg>\n")
 

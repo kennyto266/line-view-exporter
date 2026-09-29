@@ -27,7 +27,7 @@
 /* declared global so other scripts can use them after fileIn */
 global LV_BBox2, LV_ObjSegs, LV_ViewDef
 global LV_fmt3, LV_repAll, LV_xmlEscape, LV_newBBox, LV_bboxAdd, LV_buildWorldData
-global LV_lenDesc, LV_capSegs
+global LV_lenDesc, LV_capSegs, LV_unitInfo
 
 fn LV_lenDesc a b = ( if a[1] > b[1] then -1 else if a[1] < b[1] then 1 else 0 )
 
@@ -49,6 +49,32 @@ fn LV_capSegs segs cap sc =
 		res = for i = 1 to cap collect rows[i][2]
 	)
 	res
+)
+
+/* resolve dimension unit: factor (to multiply scene units by) + label.
+   "units"/empty -> auto label from the scene system unit (1:1).
+   "mm"/"cm"/"m"  -> convert from the scene system unit. */
+fn LV_unitInfo unitLabel =
+(
+	local mmPer = 1.0
+	local sysName = "units"
+	try
+	(
+		local st = units.SystemType as string
+		if matchPattern st pattern:"*milli*" then ( mmPer = 1.0; sysName = "mm" )
+		else if matchPattern st pattern:"*centi*" then ( mmPer = 10.0; sysName = "cm" )
+		else if matchPattern st pattern:"*meter*" then ( mmPer = 1000.0; sysName = "m" )
+		else if matchPattern st pattern:"*inch*" then ( mmPer = 25.4; sysName = "in" )
+		else if matchPattern st pattern:"*feet*" or matchPattern st pattern:"*foot*" then ( mmPer = 304.8; sysName = "ft" )
+	)
+	catch ( )
+	local u = toLower unitLabel
+	local factor = 1.0
+	local lab = sysName
+	if u == "mm" then ( factor = mmPer; lab = "mm" )
+	else if u == "cm" then ( factor = mmPer / 10.0; lab = "cm" )
+	else if u == "m" then ( factor = mmPer / 1000.0; lab = "m" )
+	#(factor, lab)
 )
 
 fn LV_fmt3 v = formattedPrint v format:"0.3f"
@@ -179,9 +205,11 @@ fn LV_buildWorldData obj =
                  (round things come out as clean circle outlines)
    maxSegs     : per-object cap on written segments; keeps the longest ones
                  (0 = unlimited). Tames dense machinery/lattice clusters.
+   separateSegs: bool - emit every single line as its own path, so each line
+                 can be selected/moved/stretched individually in Illustrator
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs separateSegs =
 (
 	local res = ""
 	local f = undefined
@@ -361,10 +389,22 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 						for oseg in vd.vis where oseg.segs.count > 0 do
 						(
 							local useg = LV_capSegs oseg.segs maxSegs vd.sc
-							format "<path id='%' d='" (LV_xmlEscape oseg.name) to:f
-							for s in useg where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
-								format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
-							format "'/>\n" to:f
+							if separateSegs then
+							(
+								local li = 1
+								for s in useg where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+								(
+									format "<path id='%' d='M% % L% %'/>\n" (LV_xmlEscape (oseg.name + "_" + (li as string))) (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
+									li += 1
+								)
+							)
+							else
+							(
+								format "<path id='%' d='" (LV_xmlEscape oseg.name) to:f
+								for s in useg where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+									format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
+								format "'/>\n" to:f
+							)
 						)
 						format "</g>\n" to:f
 						if includeHidden do
@@ -373,10 +413,22 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							for oseg in vd.hid where oseg.segs.count > 0 do
 							(
 								local uhid = LV_capSegs oseg.segs maxSegs vd.sc
-								format "<path id='%' d='" (LV_xmlEscape (oseg.name + "_hid")) to:f
-								for s in uhid where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
-									format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
-								format "'/>\n" to:f
+								if separateSegs then
+								(
+									local hi2 = 1
+									for s in uhid where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+									(
+										format "<path id='%' d='M% % L% %'/>\n" (LV_xmlEscape (oseg.name + "_hid_" + (hi2 as string))) (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
+										hi2 += 1
+									)
+								)
+								else
+								(
+									format "<path id='%' d='" (LV_xmlEscape (oseg.name + "_hid")) to:f
+									for s in uhid where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+										format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
+									format "'/>\n" to:f
+								)
 							)
 							format "</g>\n" to:f
 						)
@@ -391,9 +443,11 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							local dy0 = vd.bb.minY * vd.sc + vd.oy
 							local dy1 = vd.bb.maxY * vd.sc + vd.oy
 							local dimCol = "#555555"
-							local wU = (vd.bb.maxX - vd.bb.minX)
-							local hU = (vd.bb.maxY - vd.bb.minY)
-							local uLab = LV_xmlEscape unitLabel
+							local ui = LV_unitInfo unitLabel
+							local uFac = ui[1]
+							local wU = (vd.bb.maxX - vd.bb.minX) * uFac
+							local hU = (vd.bb.maxY - vd.bb.minY) * uFac
+							local uLab = LV_xmlEscape ui[2]
 							if ((dx1 - dx0) > 26.0) do
 							(
 								local dly = dy0 - 12.0
@@ -421,14 +475,16 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 						)
 					)
 					-- scale bar
-					local niceL = 1.0
+					local uisc = LV_unitInfo unitLabel
+										local effPt = sc * uisc[1]
+										local niceL = 1.0
 					for k = -6 to 6 do
 						for b in #(1.0, 2.0, 5.0) do
 						(
 							local L = b * (10.0 ^ k)
-							if (L * sc) >= 40.0 and (L * sc) <= 160.0 do niceL = L
+							if (L * effPt) >= 40.0 and (L * effPt) <= 160.0 do niceL = L
 						)
-					local barPx = niceL * sc
+					local barPx = niceL * effPt
 								if barPx <= (pageW - 2 * m) do
 								(
 									local barX = pageW - m - barPx
@@ -438,7 +494,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 									format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 barX) (LV_fmt3 (barY - 3.0)) (LV_fmt3 barX) (LV_fmt3 (barY + 3.0)) to:f
 									format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 (barX + barPx)) (LV_fmt3 (barY - 3.0)) (LV_fmt3 (barX + barPx)) (LV_fmt3 (barY + 3.0)) to:f
 									format "</g>\n" to:f
-									format "<text x='%' y='%' font-family='Arial' font-size='8' text-anchor='middle' fill='#000000'>% units</text>\n" (LV_fmt3 (barX + barPx / 2.0)) (LV_fmt3 (barY - 5.0)) (niceL as string) to:f
+									format "<text x='%' y='%' font-family='Arial' font-size='8' text-anchor='middle' fill='#000000'>% %</text>\n" (LV_fmt3 (barX + barPx / 2.0)) (LV_fmt3 (barY - 5.0)) (niceL as string) uisc[2] to:f
 								)
 					format "</svg>\n" to:f
 					close f
@@ -490,6 +546,7 @@ macroScript LineViewToSVG
 			edittext etUnit "Unit label: " text:"units" fieldwidth:120 align:#right
 			checkbox chkOutline "Outline only (clean circles, no crease lines)" checked:false
 			spinner spCap "Max lines per object (0=all): " range:[0,100000,0] type:#integer fieldwidth:52 align:#right
+			checkbox chkSplit "Every line = own path (move one by one)" checked:true
 		)
 		group "Sheet"
 		(
@@ -532,7 +589,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)
