@@ -209,9 +209,10 @@ fn LV_buildWorldData obj =
                  can be selected/moved/stretched individually in Illustrator
    sizeLabels  : bool - label every object with its W x H size (converted by
                  the unit factor) next to the object; label travels with the piece
+   lblSize     : size-label font size in pt (smaller = less clutter)
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs separateSegs sizeLabels =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs separateSegs sizeLabels lblSize =
 (
 	local res = ""
 	local f = undefined
@@ -411,7 +412,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 									li += 1
 								)
 								if sizeLabels and ((bx1 - bx0) >= 6.0 or (by1 - by0) >= 6.0) do
-									format "<text x='%' y='%' font-family='Arial' font-size='5.5' fill='#888888'>% x %</text>" (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
+									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 lblSize) (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
 								format "</g>" to:f
 							)
 							else
@@ -429,7 +430,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 								)
 								format "'/>\n" to:f
 								if sizeLabels and ((bx1 - bx0) >= 6.0 or (by1 - by0) >= 6.0) do
-									format "<text x='%' y='%' font-family='Arial' font-size='5.5' fill='#888888'>% x %</text>" (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
+									format "<text x='%' y='%' font-family='Arial' font-size='%' fill='#888888'>% x %</text>" (LV_fmt3 lblSize) (LV_fmt3 bx0) (LV_fmt3 (by0 - 1.5)) (LV_fmt1 ((bx1 - bx0) / (vd.sc * uFac))) (LV_fmt1 ((by1 - by0) / (vd.sc * uFac))) to:f
 							)
 						)
 						format "</g>\n" to:f
@@ -573,6 +574,7 @@ macroScript LineViewToSVG
 			spinner spCap "Max lines per object (0=all): " range:[0,100000,0] type:#integer fieldwidth:52 align:#right
 			checkbox chkSplit "Every line = own path (move one by one)" checked:true
 			checkbox chkSizeLbl "Size label per object (W x H)" checked:true
+			spinner spLblSz "Label font size (pt): " range:[1.5,10,3.5] type:#float scale:0.1 fieldwidth:44 align:#right
 		)
 		group "Sheet"
 		(
@@ -615,7 +617,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked chkSizeLbl.checked
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked chkSizeLbl.checked spLblSz.value
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)

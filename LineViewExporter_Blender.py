@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 7, 0),
+    "version": (1, 8, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -209,6 +209,10 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         description="Label every object with its W x H size (in the dimension unit); "
                     "the label travels with the piece",
         default=True)
+    lbl_size: FloatProperty(
+        name="Label Font Size (pt)",
+        description="Font size of the per-object size labels (smaller = less clutter)",
+        default=3.5, min=1.5, max=10.0)
 
     def draw(self, context):
         layout = self.layout
@@ -242,6 +246,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.prop(self, "max_segs")
         box.prop(self, "separate_segs")
         box.prop(self, "size_labels")
+        box.prop(self, "lbl_size")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -418,8 +423,8 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                                x2 * sc + ox, y2 * sc + oy))
                     if self.size_labels and ((xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0):
                         out.append(
-                            "<text x='%.3f' y='%.3f' font-family='Arial' font-size='5.5' fill='#888888'>%.1f x %.1f</text>\n"
-                            % (xs0, ys0 - 1.5,
+                            "<text x='%.3f' y='%.3f' font-family='Arial' font-size='%.2f' fill='#888888'>%.1f x %.1f</text>\n"
+                            % (self.lbl_size, xs0, ys0 - 1.5,
                                (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
                     out.append("</g>\n")
                 else:
@@ -434,8 +439,8 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                         ys0 = min(f[1] for f in filt); ys1 = max(f[3] for f in filt)
                         if (xs1 - xs0) >= 6.0 or (ys1 - ys0) >= 6.0:
                             out.append(
-                                "<text x='%.3f' y='%.3f' font-family='Arial' font-size='5.5' fill='#888888'>%.1f x %.1f</text>\n"
-                                % (xs0, ys0 - 1.5,
+                                "<text x='%.3f' y='%.3f' font-family='Arial' font-size='%.2f' fill='#888888'>%.1f x %.1f</text>\n"
+                                % (self.lbl_size, xs0, ys0 - 1.5,
                                    (xs1 - xs0) / (sc * uifac_l), (ys1 - ys0) / (sc * uifac_l)))
 
         for v in views:
