@@ -25,3 +25,5 @@ line_views_v2.svg
 line_views_main.svg
 *.log
 guide/
+_patch*.py
+batch_test/

@@ -89,10 +89,14 @@ A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-mil
 
 ## In Illustrator
 
-- Each view is a named group (`FRONT`, `RIGHT`, `TOP`…); each Max object is a path named after it.
+- The sheet is structured for real editing: **view group → one group per top-level assembly (unit) → one path per line**. Click a machine to move it whole; double-click to enter it and edit its lines individually.
+- Size labels (`W x H`, real-world 1:1) sit inside each unit's group, so they travel with the piece.
 - Want real layers? Select the groups → Layers panel menu → **Release to Layers**.
-- Hidden lines are ordinary dashed strokes — restyle freely.
 - Save as native `.ai` afterwards if you like.
+
+## Batch export (one SVG per group)
+
+The 3ds Max dialog has a **BATCH: ONE SVG PER GROUP** button: pick a folder and it writes one enlarged, fit-to-page SVG per top-level group in the scene (loose objects get their own sheet too). Inside each detail sheet the units are the individual parts, so every part can be dragged and carries its own size label. Ideal for handing a friend one machine at a time.
 
 ## Permanent install
 
@@ -182,10 +186,14 @@ A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-mil
 
 ## 喺 Illustrator 入面
 
-- 每個視圖一個命名 group,每件 3ds Max 物件一條 path(用返物件名)。
+- 成張圖係為真編輯而設:**view group → 每個頂層 Group 一個 group(一件)→ 每條線一個 path**。撳一下 = 成件拉去邊,double-click 入去 = 逐條線執。
+- 每件隔籬有 `闊 x 高` size label(真實 1:1),跟件行。
 - 想要真圖層:選住 group → Layers 面板 → **Release to Layers**。
-- 隱藏線係普通 dashed stroke,任改。
 - 開完可 **File > Save As** 存做原生 `.ai`。
+
+## 批次出圖(逐 Group 一張 SVG)
+
+3ds Max 對話框有 **BATCH: ONE SVG PER GROUP** 掣:揀個資料夾,佢就幫你場景入面每個頂層 Group 各出一張放大、fit 一頁嘅 SVG(唔屬於 group 嘅散件都會各自一張)。每張細節圖入面嘅單位係零件 — 每件零件可以拉動、有自己 size label。交俾朋友一部機一張圖,最啱晒。
 
 ## 永久安裝
 
