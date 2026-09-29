@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 2, 0),
+    "version": (1, 3, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -158,6 +158,11 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         name="Unit Label",
         description="Text appended to dimension numbers, e.g. mm, cm, units",
         default="units", maxlen=16)
+    outline_only: BoolProperty(
+        name="Outline Only",
+        description="Draw silhouettes and border edges only, no crease lines - "
+                    "round things come out as clean circle outlines",
+        default=False)
 
     def draw(self, context):
         layout = self.layout
@@ -187,6 +192,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.label(text="Dimensions")
         box.prop(self, "use_dims")
         box.prop(self, "unit_label")
+        box.prop(self, "outline_only")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -254,10 +260,10 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     else:
                         if c1 != c2:
                             vis_e = True  # silhouette
-                        elif c1:  # both facing: crease test
+                        elif c1 and not self.outline_only:  # both facing: crease test
                             dp = max(-1.0, min(1.0, n1.dot(facen[ef[1]])))
                             vis_e = math.acos(dp) > crease_rad
-                        elif self.include_hidden:  # both back-facing
+                        elif self.include_hidden and not self.outline_only:  # both back-facing
                             dp = max(-1.0, min(1.0, n1.dot(facen[ef[1]])))
                             hid_e = math.acos(dp) > crease_rad
                     if vis_e or hid_e:

@@ -60,6 +60,7 @@ Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder,
 - **Drop lines shorter (default 0.4 pt)** — segments smaller than this on the sheet are skipped; kills sub-pixel speckle noise from huge or noisy scenes.
 - **Draw open (border) edges** — uncheck if a broken/open mesh floods the sheet with wireframe.
 - **Dimension annotations (default on)** — width/height dimension lines with arrows and a number (in scene units) for every view; set the **unit label** (e.g. `mm`, `cm`) so the numbers read the way you want.
+- **Outline only** — silhouettes and border edges only, no crease lines. Round things (cylinders, wheels, pipes) come out as clean circle outlines instead of dense hatching; boxes become plain rectangles. Use this for clean blueprint-style drawings.
 - **Include hidden edges** — dashed grey lines for back-facing outlines/creases.
 - **Flip facing test** — if the output looks inside-out (flipped mesh normals), tick this; no need to fix the model.
 - **Sheet** — A4/A3 auto-fit with uniform scale, or "No fit" (1 max unit = 1 pt, true size).
@@ -161,6 +162,7 @@ A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-mil
 - **Drop lines shorter(預設 0.4pt)**:紙上細過呢個長度嘅線段會跳過,過濾亞像素碎屑。
 - **Draw open edges**:破 mesh 爛開口邊氾濫嘅話可以關掉。
 - **Dimension annotations(預設開)**:每個 view 自動加工程圖則式尺寸線(箭嘴 + 數字,場景單位);**Unit label** 可以自訂(例如 `mm`、`cm`)。
+- **Outline only(淨輪廓)**:只畫 silhouette 同開口邊,唔畀 crease 線 — 圓形嘢(圓柱、輪、喉管)會出乾淨圓圈輪廓,唔會變黑影;盒就出淨矩形。想要藍圖風清爽線稿就用呢個。
 - **Include hidden edges**:背向嘅開口邊/硬邊以灰色虛線表示。
 - **Flip facing test**:線圖「內外反轉」(mesh normals 翌咗)就勾呢個,唔使修 model。
 - **Sheet**:A4/A3 自動排版 fit(統一比例、視圖對齊),或 1 max unit = 1 pt 原大輸出。

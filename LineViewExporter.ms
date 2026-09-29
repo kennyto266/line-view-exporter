@@ -152,9 +152,11 @@ fn LV_buildWorldData obj =
    drawOpen    : bool - draw open/border edges (turn off if a broken mesh floods the sheet)
    dimsOn      : bool - add engineering-style dimension lines (view width/height)
    unitLabel   : text appended to dimension numbers, e.g. "mm", "cm", "units"
+   outlineOnly : bool - draw silhouettes and border edges only; no crease lines
+                 (round things come out as clean circle outlines)
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly =
 (
 	local res = ""
 	local f = undefined
@@ -215,12 +217,12 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							else
 							(
 								if c1 != c2 then visE = true
-								else if c1 then
+								else if (not outlineOnly) and c1 then
 								(
 									local dp = amax -1.0 (amin 1.0 (dot n1 faceN[ef[2]]))
 									visE = (acos dp) > creaseRad
 								)
-								else if includeHidden then
+								else if (not outlineOnly) and includeHidden then
 								(
 									local dp = amax -1.0 (amin 1.0 (dot n1 faceN[ef[2]]))
 									hidE = (acos dp) > creaseRad
@@ -459,6 +461,7 @@ macroScript LineViewToSVG
 			checkbox chkFlip "Flip facing test (if views look inverted)"
 			checkbox chkDims "Add dimension annotations" checked:true
 			edittext etUnit "Unit label: " text:"units" fieldwidth:120 align:#right
+			checkbox chkOutline "Outline only (clean circles, no crease lines)" checked:false
 		)
 		group "Sheet"
 		(
@@ -501,7 +504,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)
