@@ -20,6 +20,14 @@ Two versions of the same tool live in this repo:
    3. In Blender: **Edit > Preferences > Add-ons > Install** (called *Install from Disk* in 4.2+) → pick `LineViewExporter_Blender.py` → enable **Import-Export: Line View Exporter**
    4. Select your objects (no selection = all visible meshes), press **N** in the 3D viewport → **Line View** tab → **Export Line Views SVG**
 
+## Example output
+
+Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder, stretched sphere), exported with hidden lines on:
+
+![Example blueprint output](test_preview.png)
+
+*(Preview rasterized from the SVG with a simple script — in Adobe Illustrator / any browser the SVG is fully editable vector.)*
+
 ## Quick Start (3ds Max, Windows)
 
 1. Open your model scene in 3ds Max (2014–2026).

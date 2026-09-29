@@ -1,3 +1,7 @@
+# Test run artifacts (regenerate with test_lineview.ms / _verify.py)
+test_log.txt
+test_output.svg
+
 # Python bytecode
 __pycache__/
 *.pyc
