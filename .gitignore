@@ -13,3 +13,15 @@ __pycache__/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local diagnostics (contain machine-specific paths) + test artifacts
+probe*.ms
+diag*.ms
+realexp.ms
+zoneexp.ms
+outlier.ms
+bb_test.svg
+line_views_v2.svg
+line_views_main.svg
+*.log
+guide/

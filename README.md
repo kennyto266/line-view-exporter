@@ -56,9 +56,21 @@ Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder,
 
 - **Crease angle (default 30°)** — an edge shared by two faces is drawn only if the faces bend more than this. Lower (10–20°) = more detail lines; higher (40–60°) = outlines and big features only. Turn it up for dense, tessellated surfaces.
 - **Stroke weight (default 0.5 pt)** — line weight in Illustrator.
+- **Drop lines shorter (default 0.4 pt)** — segments smaller than this on the sheet are skipped; kills sub-pixel speckle noise from huge or noisy scenes.
+- **Draw open (border) edges** — uncheck if a broken/open mesh floods the sheet with wireframe.
 - **Include hidden edges** — dashed grey lines for back-facing outlines/creases.
 - **Flip facing test** — if the output looks inside-out (flipped mesh normals), tick this; no need to fix the model.
 - **Sheet** — A4/A3 auto-fit with uniform scale, or "No fit" (1 max unit = 1 pt, true size).
+
+### CAD-import heavy scenes (v1.1)
+
+Each object is snapshotted (originals untouched) and cleaned before line extraction:
+
+1. **Vertex weld** (0.05 % of the object diagonal) — CAD-imported meshes are often unwelded, which would otherwise classify *every* edge as an open edge and flood the sheet.
+2. **Unify normals** — fixes mixed/inverted normals from imports.
+3. **Sub-pixel filter** — segments below the "Drop lines shorter" size never reach the SVG.
+
+A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-million-segment SVG (crashed Inkscape) now exports as a 1.2 MB / 33 k-segment blueprint that opens instantly.
 
 ## In Illustrator
 

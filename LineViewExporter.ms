@@ -65,6 +65,12 @@ struct LV_ObjSegs (name, segs)
 struct LV_ViewDef (name, right, down, viewDir, col, row, vis, hid, bb, ox, oy, sc)
 
 /* Snapshot an object into world space and collect edge/face data.
+   Two cleanup passes are applied to the snapshot copy first:
+   1. weld vertices by a tiny threshold - CAD-imported meshes are often
+      unwelded, which would otherwise classify every edge as an open edge
+      and flood the sheet with wireframe;
+   2. unify normals (Normal modifier) - fixes mixed/inverted normals.
+   The original object is never touched.
    Returns #(worldVerts, faceNormals, edgeVerts, edgeFaces) or undefined. */
 fn LV_buildWorldData obj =
 (
@@ -73,10 +79,27 @@ fn LV_buildWorldData obj =
 	try
 	(
 		tmp = snapshot obj
+		convertToMesh tmp
+		try
+		(
+			local thr = 0.0005 * (length (tmp.max - tmp.min))
+			if thr > 0.0 do meshop.weldVertsByThreshold tmp #{1..(getNumVerts tmp)} thr
+		)
+		catch ( false )
 		convertToPoly tmp
+		-- unify normals on the copy; if the modifier is unavailable just carry on
+		try
+		(
+			local nm = Normalmodifier()
+			addModifier tmp nm
+			for p in getPropNames nm where matchPattern ((p as string) as lowerCase) pattern:"*unif*" do setProperty nm p true
+		)
+		catch ( false )
 		local numV = polyop.getNumVerts tmp
 		local wverts = #()
-		for i = 1 to numV do append wverts ((polyop.getVert tmp i) * tmp.transform)
+		-- polyop.getVert on a NODE already returns world-space coords; do not
+		-- multiply by the transform again (double-transform bug)
+		for i = 1 to numV do append wverts (polyop.getVert tmp i)
 		local numF = polyop.getNumFaces tmp
 		local faceN = #()
 		for i = 1 to numF do
@@ -112,9 +135,11 @@ fn LV_buildWorldData obj =
    filePath    : target .svg path
    pageMode    : 1=A4 landscape 2=A3 landscape 3=A4 portrait 4=no fit (1:1)
    progressBar : rollout progressbar or undefined
+   minPt       : drop segments shorter than this many pt on the sheet (0 = keep all)
+   drawOpen    : bool - draw open/border edges (turn off if a broken mesh floods the sheet)
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen =
 (
 	local res = ""
 	local f = undefined
@@ -166,8 +191,11 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							local hidE = false
 							if ef.count == 1 then
 							(
-								visE = c1
-								if includeHidden do hidE = (not c1)
+								if drawOpen do
+								(
+									visE = c1
+									if includeHidden do hidE = (not c1)
+								)
 							)
 							else
 							(
@@ -291,7 +319,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 						for oseg in vd.vis where oseg.segs.count > 0 do
 						(
 							format "<path id='%' d='" (LV_xmlEscape oseg.name) to:f
-							for s in oseg.segs do
+							for s in oseg.segs where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 								format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 							format "'/>\n" to:f
 						)
@@ -302,7 +330,7 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							for oseg in vd.hid where oseg.segs.count > 0 do
 							(
 								format "<path id='%' d='" (LV_xmlEscape (oseg.name + "_hid")) to:f
-								for s in oseg.segs do
+								for s in oseg.segs where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 									format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 								format "'/>\n" to:f
 							)
@@ -374,6 +402,8 @@ macroScript LineViewToSVG
 		(
 			spinner spCrease "Crease angle (deg): " range:[0,90,30] type:#integer fieldwidth:44 align:#right
 			spinner spWeight "Stroke weight (pt): " range:[0.05,5.0,0.5] scale:0.05 fieldwidth:44 align:#right
+			spinner spMin "Drop lines shorter (pt): " range:[0,5.0,0.4] scale:0.05 fieldwidth:44 align:#right
+			checkbox chkOpen "Draw open (border) edges" checked:true
 			checkbox chkHidden "Include hidden edges (dashed grey)"
 			checkbox chkFlip "Flip facing test (if views look inverted)"
 		)
@@ -418,7 +448,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)
