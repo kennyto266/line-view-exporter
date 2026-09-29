@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 3, 0),
+    "version": (1, 4, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -163,6 +163,11 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         description="Draw silhouettes and border edges only, no crease lines - "
                     "round things come out as clean circle outlines",
         default=False)
+    max_segs: IntProperty(
+        name="Max Lines Per Object",
+        description="Per-object cap on written segments, keeping the longest ones "
+                    "(0 = unlimited). Tames dense machinery/lattice clusters.",
+        default=0, min=0, max=100000)
 
     def draw(self, context):
         layout = self.layout
@@ -193,6 +198,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.prop(self, "use_dims")
         box.prop(self, "unit_label")
         box.prop(self, "outline_only")
+        box.prop(self, "max_segs")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -342,8 +348,14 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
             for nm, segs in entries:
                 if not segs:
                     continue
+                useg = segs
+                if self.max_segs > 0 and len(segs) > self.max_segs:
+                    useg = sorted(
+                        segs,
+                        key=lambda s: (s[1][0] - s[0][0]) ** 2 + (s[1][1] - s[0][1]) ** 2,
+                        reverse=True)[:self.max_segs]
                 body = []
-                for (x1, y1), (x2, y2) in segs:
+                for (x1, y1), (x2, y2) in useg:
                     if self.min_pt > 0.0:
                         if math.hypot((x2 - x1) * sc, (y2 - y1) * sc) < self.min_pt:
                             continue

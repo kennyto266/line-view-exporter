@@ -27,6 +27,29 @@
 /* declared global so other scripts can use them after fileIn */
 global LV_BBox2, LV_ObjSegs, LV_ViewDef
 global LV_fmt3, LV_repAll, LV_xmlEscape, LV_newBBox, LV_bboxAdd, LV_buildWorldData
+global LV_lenDesc, LV_capSegs
+
+fn LV_lenDesc a b = ( if a[1] > b[1] then -1 else if a[1] < b[1] then 1 else 0 )
+
+/* keep only the `cap` longest segments (by on-sheet length) - auto-de-clutters
+   objects made of thousands of tiny edges; cap <= 0 keeps everything */
+fn LV_capSegs segs cap sc =
+(
+	local res = segs
+	if cap > 0 and segs.count > cap do
+	(
+		local rows = #()
+		for s in segs do
+		(
+			local dx = (s[2].x - s[1].x) * sc
+			local dy = (s[2].y - s[1].y) * sc
+			append rows #(dx*dx + dy*dy, s)
+		)
+		qsort rows LV_lenDesc
+		res = for i = 1 to cap collect rows[i][2]
+	)
+	res
+)
 
 fn LV_fmt3 v = formattedPrint v format:"0.3f"
 
@@ -154,9 +177,11 @@ fn LV_buildWorldData obj =
    unitLabel   : text appended to dimension numbers, e.g. "mm", "cm", "units"
    outlineOnly : bool - draw silhouettes and border edges only; no crease lines
                  (round things come out as clean circle outlines)
+   maxSegs     : per-object cap on written segments; keeps the longest ones
+                 (0 = unlimited). Tames dense machinery/lattice clusters.
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs =
 (
 	local res = ""
 	local f = undefined
@@ -335,8 +360,9 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 						format "<g id='%' fill='none' stroke='#000000' stroke-width='%' stroke-linecap='round' stroke-linejoin='round'>\n" vd.name (LV_fmt3 strokeW) to:f
 						for oseg in vd.vis where oseg.segs.count > 0 do
 						(
+							local useg = LV_capSegs oseg.segs maxSegs vd.sc
 							format "<path id='%' d='" (LV_xmlEscape oseg.name) to:f
-							for s in oseg.segs where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+							for s in useg where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 								format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 							format "'/>\n" to:f
 						)
@@ -346,8 +372,9 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 							format "<g id='%' fill='none' stroke='#999999' stroke-width='%' stroke-dasharray='3,2' stroke-linecap='round'>\n" (vd.name + "_hidden") (LV_fmt3 hiddenW) to:f
 							for oseg in vd.hid where oseg.segs.count > 0 do
 							(
+								local uhid = LV_capSegs oseg.segs maxSegs vd.sc
 								format "<path id='%' d='" (LV_xmlEscape (oseg.name + "_hid")) to:f
-								for s in oseg.segs where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
+								for s in uhid where (minPt <= 0.0) or ((sqrt (((s[2].x - s[1].x) * vd.sc)^2 + ((s[2].y - s[1].y) * vd.sc)^2)) >= minPt) do
 									format "M% % L% % " (LV_fmt3 (s[1].x * vd.sc + vd.ox)) (LV_fmt3 (s[1].y * vd.sc + vd.oy)) (LV_fmt3 (s[2].x * vd.sc + vd.ox)) (LV_fmt3 (s[2].y * vd.sc + vd.oy)) to:f
 								format "'/>\n" to:f
 							)
@@ -462,6 +489,7 @@ macroScript LineViewToSVG
 			checkbox chkDims "Add dimension annotations" checked:true
 			edittext etUnit "Unit label: " text:"units" fieldwidth:120 align:#right
 			checkbox chkOutline "Outline only (clean circles, no crease lines)" checked:false
+			spinner spCap "Max lines per object (0=all): " range:[0,100000,0] type:#integer fieldwidth:52 align:#right
 		)
 		group "Sheet"
 		(
@@ -504,7 +532,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)
