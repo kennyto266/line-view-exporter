@@ -1,0 +1,7 @@
+# MAXScript backup droppings
+*.bak
+*.ms.bak
+
+# OS
+Thumbs.db
+.DS_Store
