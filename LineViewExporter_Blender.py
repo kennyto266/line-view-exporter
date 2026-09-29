@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 8, 0),
+    "version": (1, 9, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -85,6 +85,14 @@ def _build_world_data(obj, depsgraph):
     bm.free()
     obj_eval.to_mesh_clear()
     return wverts, facen, edges
+
+
+def _unit_name(obj):
+    """Topmost ancestor name = the unit (assembly) this object belongs to."""
+    top = obj
+    while top.parent is not None:
+        top = top.parent
+    return top.name
 
 
 def _seg_bounds(items):
@@ -276,7 +284,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     'name': name,
                     'right': Vector(r), 'down': Vector(d), 'dir': Vector(vd),
                     'col': col, 'row': row,
-                    'vis': [], 'hid': [], 'bb': (0.0, 0.0, 0.0, 0.0),
+                    'vis': {}, 'hid': {}, 'bb': (0.0, 0.0, 0.0, 0.0),
                     'sc': 1.0, 'ox': 0.0, 'oy': 0.0,
                 })
         if not views:
@@ -329,15 +337,20 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                             vs_segs.append((s1, s2))
                         if hid_e:
                             hs_segs.append((s1, s2))
-                v['vis'].append((obj.name, vs_segs))
+                unm = _unit_name(obj)
+                if unm not in v['vis']:
+                    v['vis'][unm] = []
+                v['vis'][unm].extend(vs_segs)
                 if self.include_hidden:
-                    v['hid'].append((obj.name, hs_segs))
+                    if unm not in v['hid']:
+                        v['hid'][unm] = []
+                    v['hid'][unm].extend(hs_segs)
 
         # bounding boxes
         for v in views:
-            items = list(v['vis'])
+            items = list(v['vis'].items())
             if self.include_hidden:
-                items += list(v['hid'])
+                items += list(v['hid'].items())
             if any(segs for _n, segs in items):
                 v['bb'] = _seg_bounds(items)
 
@@ -451,7 +464,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                 "<g id='%s' fill='none' stroke='#000000' stroke-width='%.3f' "
                 "stroke-linecap='round' stroke-linejoin='round'>\n"
                 % (v['name'], self.stroke_weight))
-            _paths(v['vis'])
+            _paths(v['vis'].items())
             out.append("</g>\n")
             if self.include_hidden:
                 out.append(
@@ -459,7 +472,7 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     "stroke-width='%.3f' stroke-dasharray='3,2' "
                     "stroke-linecap='round'>\n"
                     % (v['name'], self.stroke_weight * 0.7))
-                _paths([(nm + "_hid", segs) for nm, segs in v['hid']])
+                _paths([(nm + "_hid", segs) for nm, segs in v['hid'].items()])
                 out.append("</g>\n")
             lx = m + (v['col'] - col_min) * (cellw + gap) + cellw / 2.0
             ly = m + (v['row'] - row_min) * (cellh + gap) + cellh - 5.0

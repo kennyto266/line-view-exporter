@@ -210,9 +210,11 @@ fn LV_buildWorldData obj =
    sizeLabels  : bool - label every object with its W x H size (converted by
                  the unit factor) next to the object; label travels with the piece
    lblSize     : size-label font size in pt (smaller = less clutter)
+   unitNames   : optional array (same count as objs) naming the unit each object
+                 belongs to (e.g. its top-level group); lines/labels merge per unit
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs separateSegs sizeLabels lblSize =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel outlineOnly maxSegs separateSegs sizeLabels lblSize unitNames =
 (
 	local res = ""
 	local f = undefined
@@ -235,22 +237,25 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 				(
 					local d = LV_buildWorldData objs[i]
 					if d == undefined then append failObjs objs[i].name
-					else append objData #(objs[i].name, d)
+					else append objData #(objs[i].name, d, (if unitNames != undefined and unitNames.count == objs.count then unitNames[i] else objs[i].name))
 					if progressBar != undefined do progressBar.value = 50.0 * i / objs.count
 				)
 
 				-- pass 2: classify + project edges for every view
 				local totalWork = amax 1 (objData.count * viewDefs.count)
 				local wi = 0
+				local uData = for v in viewDefs collect #(#(), #(), #())
 				for od in objData do
 				(
-					local nm = od[1]
+					local nm = if unitNames != undefined and unitNames.count == objData.count then od[3] else od[1]
 					local wverts = od[2][1]
 					local faceN = od[2][2]
 					local edgesV = od[2][3]
 					local edgesF = od[2][4]
+					local vi = 0
 					for vd in viewDefs do
 					(
+						vi += 1
 						local vs = #()
 						local hs = #()
 						for e = 1 to edgesV.count do
@@ -293,13 +298,26 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 								if hidE do append hs #([dot p1 vd.right, dot p1 vd.down], [dot p2 vd.right, dot p2 vd.down])
 							)
 						)
-						append vd.vis (LV_ObjSegs name:nm segs:vs)
-						if includeHidden do append vd.hid (LV_ObjSegs name:nm segs:hs)
+						local uIdx = findItem uData[vi][1] nm
+						if uIdx == 0 do
+						(
+							append uData[vi][1] nm
+							append uData[vi][2] #()
+							append uData[vi][3] #()
+							uIdx = uData[vi][1].count
+						)
+						for s in vs do append uData[vi][2][uIdx] s
+						for s in hs do append uData[vi][3][uIdx] s
 						wi += 1
 						if progressBar != undefined do progressBar.value = 50.0 + 50.0 * wi / totalWork
 					)
 				)
 
+				for vj = 1 to viewDefs.count do
+				(
+					viewDefs[vj].vis = for ui = 1 to uData[vj][1].count collect (LV_ObjSegs name:uData[vj][1][ui] segs:uData[vj][2][ui])
+					if includeHidden do viewDefs[vj].hid = for ui = 1 to uData[vj][1].count collect (LV_ObjSegs name:uData[vj][1][ui] segs:uData[vj][3][ui])
+				)
 				-- per-view bounding boxes
 				for vd in viewDefs do
 				(
@@ -585,6 +603,7 @@ macroScript LineViewToSVG
 			edittext etPath "File:" text:((getDir #export) + "\\line_views.svg") fieldwidth:250
 			button btnBrowse "Browse..." width:90 align:#left
 			button btnExport "EXPORT LINE VIEWS" width:170 height:32
+			button btnBatch "BATCH: ONE SVG PER GROUP" width:170 height:24
 			progressbar pbMain value:0 color:(color 90 160 255)
 			label lblInfo "No selection = all visible geometry" align:#left
 		)
@@ -617,9 +636,66 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked chkSizeLbl.checked spLblSz.value
+					local unitNames = #()
+					for o in objs do
+					(
+						local top = o
+						local pp = o.parent
+						while pp != undefined do ( top = pp; pp = pp.parent )
+						append unitNames top.name
+					)
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked chkSizeLbl.checked spLblSz.value undefined
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
+				)
+			)
+		)
+		on btnBatch pressed do
+		(
+			local folder = getSavePath caption:"Pick a folder for the per-group SVGs"
+			if folder != undefined do
+			(
+				local heads = for o in objects where (isValidNode o) and (matchPattern o.name pattern:"Group*") collect o
+				local units = #()
+				for h in heads do append units #(h.name, h)
+				for o in geometry where o.parent == undefined do append units #(o.name, o)
+				if units.count == 0 then messageBox "No groups or loose objects found."
+				else
+				(
+					local nOk = 0
+					local nFail = 0
+					local badChars = "\\/:*?<>|"
+					for i = 1 to units.count do
+					(
+						local rootNode = units[i][2]
+						local objs = #()
+						if (isKindOf rootNode GeometryClass) do append objs rootNode
+						for o in geometry do
+						(
+							local pp = o.parent
+							while pp != undefined do
+							(
+								if pp == rootNode do ( append objs o; exit )
+								pp = pp.parent
+							)
+						)
+						if objs.count > 0 do
+						(
+							local fname = units[i][1]
+							for ci = 1 to badChars.count do fname = LV_repAll fname (badChars[ci] as string) "_"
+							local vd = #(
+								(LV_ViewDef name:"FRONT" right:[1,0,0] down:[0,0,-1] viewDir:[0,1,0] col:0 row:1 vis:#() hid:#()),
+								(LV_ViewDef name:"RIGHT" right:[0,1,0] down:[0,0,-1] viewDir:[-1,0,0] col:1 row:1 vis:#() hid:#()),
+								(LV_ViewDef name:"TOP" right:[1,0,0] down:[0,1,0] viewDir:[0,0,-1] col:0 row:0 vis:#() hid:#())
+							)
+							local res = LineView_ExportSVG objs vd chkHidden.checked spCrease.value spWeight.value chkFlip.checked (folder + "\\" + fname + ".svg") ddlPage.selection undefined spMin.value chkOpen.checked chkDims.checked etUnit.text chkOutline.checked spCap.value chkSplit.checked chkSizeLbl.checked spLblSz.value unitNames
+							if (substring res 1 6) == "ERROR:" then nFail += 1 else nOk += 1
+						)
+						pbMain.value = 100.0 * i / units.count
+						windows.processPostedMessages()
+					)
+					pbMain.value = 0
+					messageBox ("Batch done: " + (nOk as string) + " files written, " + (nFail as string) + " failed." + BSN + BSN + "Folder:" + BSN + "" + folder)
 				)
 			)
 		)
