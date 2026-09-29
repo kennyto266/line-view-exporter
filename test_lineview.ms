@@ -44,7 +44,7 @@
 		(LV_ViewDef name:"RIGHT" right:[0,1,0] down:[0,0,-1] viewDir:[-1,0,0] col:1 row:1 vis:#() hid:#()),
 		(LV_ViewDef name:"TOP" right:[1,0,0] down:[0,1,0] viewDir:[0,0,-1] col:0 row:0 vis:#() hid:#())
 	)
-	local res = LineView_ExportSVG objs vd true 30 0.5 false outSvg 1 undefined 0.4 true
+	local res = LineView_ExportSVG objs vd true 30 0.5 false outSvg 1 undefined 0.4 true true "units"
 	format "[3] result: %\n" res
 
 	if doesFileExist outSvg then

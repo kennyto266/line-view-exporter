@@ -30,6 +30,19 @@ global LV_fmt3, LV_repAll, LV_xmlEscape, LV_newBBox, LV_bboxAdd, LV_buildWorldDa
 
 fn LV_fmt3 v = formattedPrint v format:"0.3f"
 
+fn LV_fmt1 v = formattedPrint v format:"0.1f"
+
+/* arrowhead: closed triangle path with tip at (tx,ty) pointing along unit vector (ux,uy) */
+fn LV_arrow tx ty ux uy col =
+(
+	local bx = tx - ux * 7.0
+	local byy = ty - uy * 7.0
+	local px = -uy * 2.2
+	local py = ux * 2.2
+	local s = "M" + (LV_fmt3 tx) + " " + (LV_fmt3 ty) + " L" + (LV_fmt3 (bx + px)) + " " + (LV_fmt3 (byy + py)) + " L" + (LV_fmt3 (bx - px)) + " " + (LV_fmt3 (byy - py)) + " Z"
+	format "<path d='%' fill='%'/>\n" s col
+)
+
 fn LV_repAll s old new =
 (
 	while (findString s old) != undefined do s = substitute s old new
@@ -137,9 +150,11 @@ fn LV_buildWorldData obj =
    progressBar : rollout progressbar or undefined
    minPt       : drop segments shorter than this many pt on the sheet (0 = keep all)
    drawOpen    : bool - draw open/border edges (turn off if a broken mesh floods the sheet)
+   dimsOn      : bool - add engineering-style dimension lines (view width/height)
+   unitLabel   : text appended to dimension numbers, e.g. "mm", "cm", "units"
    Returns a result string ("Exported..." or "ERROR: ..."). */
 global LineView_ExportSVG
-fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen =
+fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing filePath pageMode progressBar minPt drawOpen dimsOn unitLabel =
 (
 	local res = ""
 	local f = undefined
@@ -339,6 +354,42 @@ fn LineView_ExportSVG objs viewDefs includeHidden creaseDeg strokeW flipFacing f
 						local lx = m + (vd.col - colMin) * (cellW + gap) + cellW / 2.0
 						local ly = m + (vd.row - rowMin) * (cellH + gap) + cellH - 5.0
 						format "<text x='%' y='%' font-family='Arial' font-size='9' text-anchor='middle' fill='#000000'>%</text>\n" (LV_fmt3 lx) (LV_fmt3 ly) vd.name to:f
+						-- engineering-style dimensions for this view (width below, height left)
+						if dimsOn do
+						(
+							local dx0 = vd.bb.minX * vd.sc + vd.ox
+							local dx1 = vd.bb.maxX * vd.sc + vd.ox
+							local dy0 = vd.bb.minY * vd.sc + vd.oy
+							local dy1 = vd.bb.maxY * vd.sc + vd.oy
+							local dimCol = "#555555"
+							local wU = (vd.bb.maxX - vd.bb.minX)
+							local hU = (vd.bb.maxY - vd.bb.minY)
+							local uLab = LV_xmlEscape unitLabel
+							if ((dx1 - dx0) > 26.0) do
+							(
+								local dly = dy0 - 12.0
+								format "<g id='%_dimW' stroke='%' stroke-width='0.3' fill='none'>\n" vd.name dimCol to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 dx0) (LV_fmt3 (dy0 + 1.5)) (LV_fmt3 dx0) (LV_fmt3 (dly - 2.0)) to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 dx1) (LV_fmt3 (dy0 + 1.5)) (LV_fmt3 dx1) (LV_fmt3 (dly - 2.0)) to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 dx0) (LV_fmt3 dly) (LV_fmt3 dx1) (LV_fmt3 dly) to:f
+								format "</g>\n" to:f
+								LV_arrow dx0 dly -1.0 0.0 dimCol
+								LV_arrow dx1 dly 1.0 0.0 dimCol
+								format "<text x='%' y='%' font-family='Arial' font-size='7' text-anchor='middle' fill='%'>% %</text>\n" (LV_fmt3 ((dx0 + dx1) / 2.0)) (LV_fmt3 (dly - 3.0)) dimCol (LV_fmt1 wU) uLab to:f
+							)
+							if ((dy1 - dy0) > 26.0) do
+							(
+								local dlx = dx0 - 12.0
+								format "<g id='%_dimH' stroke='%' stroke-width='0.3' fill='none'>\n" vd.name dimCol to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 (dx0 - 1.5)) (LV_fmt3 dy0) (LV_fmt3 (dlx - 2.0)) (LV_fmt3 dy0) to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 (dx0 - 1.5)) (LV_fmt3 dy1) (LV_fmt3 (dlx - 2.0)) (LV_fmt3 dy1) to:f
+								format "<line x1='%' y1='%' x2='%' y2='%'/>\n" (LV_fmt3 dlx) (LV_fmt3 dy0) (LV_fmt3 dlx) (LV_fmt3 dy1) to:f
+								format "</g>\n" to:f
+								LV_arrow dlx dy0 0.0 -1.0 dimCol
+								LV_arrow dlx dy1 0.0 1.0 dimCol
+								format "<text x='%' y='%' transform='rotate(-90 % %)' font-family='Arial' font-size='7' text-anchor='middle' fill='%'>% %</text>\n" (LV_fmt3 (dlx - 3.0)) (LV_fmt3 ((dy0 + dy1) / 2.0)) (LV_fmt3 (dlx - 3.0)) (LV_fmt3 ((dy0 + dy1) / 2.0)) dimCol (LV_fmt1 hU) uLab to:f
+							)
+						)
 					)
 					-- scale bar
 					local niceL = 1.0
@@ -406,6 +457,8 @@ macroScript LineViewToSVG
 			checkbox chkOpen "Draw open (border) edges" checked:true
 			checkbox chkHidden "Include hidden edges (dashed grey)"
 			checkbox chkFlip "Flip facing test (if views look inverted)"
+			checkbox chkDims "Add dimension annotations" checked:true
+			edittext etUnit "Unit label: " text:"units" fieldwidth:120 align:#right
 		)
 		group "Sheet"
 		(
@@ -448,7 +501,7 @@ macroScript LineViewToSVG
 				if objs.count == 0 then messageBox "No geometry to export.\nSelect some objects, or make scene geometry visible."
 				else
 				(
-					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked
+					local res = LineView_ExportSVG objs viewDefs chkHidden.checked spCrease.value spWeight.value chkFlip.checked etPath.text ddlPage.selection pbMain spMin.value chkOpen.checked chkDims.checked etUnit.text
 					if (substring res 1 6) == "ERROR:" then messageBox res
 					else messageBox (res + "\n\nOpen the SVG in Adobe Illustrator:\neach view is a named group of editable paths\n(Object > Release to Layers turns groups into layers).")
 				)

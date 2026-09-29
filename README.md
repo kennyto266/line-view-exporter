@@ -49,6 +49,7 @@ Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder,
 | 6 orthographic views | Front / Right / Top enabled by default, plus Back / Left / Bottom |
 | Smart line extraction | Draws only **silhouettes, open edges and creases** — smooth internal edges are skipped, so you get a clean drawing instead of wireframe soup |
 | Hidden lines | Optional grey **dashed** lines for edges hidden behind the model (technical-drawing style) |
+| Dimension annotations | Engineering-style **dimension lines with arrows** below/left of each view showing its real width/height in scene units (customizable unit label, e.g. `mm`) |
 | Blueprint layout | Third-angle sheet: Top above, Front center, Right at right — auto-aligned, auto-fit to A4/A3, with scale bar and view labels |
 | Illustrator-friendly | One named group per view, one path per 3ds Max object; stroke weight and dashes are live stroke attributes |
 
@@ -58,9 +59,21 @@ Preview of the automated test scene (box, teapot, flat plane, 18-sided cylinder,
 - **Stroke weight (default 0.5 pt)** — line weight in Illustrator.
 - **Drop lines shorter (default 0.4 pt)** — segments smaller than this on the sheet are skipped; kills sub-pixel speckle noise from huge or noisy scenes.
 - **Draw open (border) edges** — uncheck if a broken/open mesh floods the sheet with wireframe.
+- **Dimension annotations (default on)** — width/height dimension lines with arrows and a number (in scene units) for every view; set the **unit label** (e.g. `mm`, `cm`) so the numbers read the way you want.
 - **Include hidden edges** — dashed grey lines for back-facing outlines/creases.
 - **Flip facing test** — if the output looks inside-out (flipped mesh normals), tick this; no need to fix the model.
 - **Sheet** — A4/A3 auto-fit with uniform scale, or "No fit" (1 max unit = 1 pt, true size).
+
+## Workflow: into Adobe Illustrator
+
+Everything the exporter writes is native, editable vector — no image tracing needed:
+
+1. In Illustrator: **File > Open** the exported `.svg` (or drag it onto the artboard).
+2. Each view arrives as a named group (`FRONT`, `RIGHT`, `TOP`…); model lines, dimension lines/arrows and dimension numbers are all separate, editable objects (the numbers are real text objects).
+3. Edit anything: restyle strokes, move/replace dimension labels, delete views you don't need, add your own annotations on top.
+4. **File > Save As** → `.ai` to continue in native Illustrator format.
+
+Note: the dimension numbers are plain text, not live measurements — if you rescale artwork in Illustrator afterwards, update the numbers by hand (or re-export with a different unit label).
 
 ### CAD-import heavy scenes (v1.1)
 
@@ -145,9 +158,23 @@ A real-world test: an industrial plant scene that exported as an 87 MB / 2.6-mil
 
 - **Crease angle(預設 30°)**:兩面夾角大過呢個值先畫線。調細(10–20°)多細節;調大(40–60°)淨係大輪廓。曲面密線多就調大啲。
 - **Stroke weight(預設 0.5pt)**:Illustrator 入面嘅線粗。
+- **Drop lines shorter(預設 0.4pt)**:紙上細過呢個長度嘅線段會跳過,過濾亞像素碎屑。
+- **Draw open edges**:破 mesh 爛開口邊氾濫嘅話可以關掉。
+- **Dimension annotations(預設開)**:每個 view 自動加工程圖則式尺寸線(箭嘴 + 數字,場景單位);**Unit label** 可以自訂(例如 `mm`、`cm`)。
 - **Include hidden edges**:背向嘅開口邊/硬邊以灰色虛線表示。
 - **Flip facing test**:線圖「內外反轉」(mesh normals 翌咗)就勾呢個,唔使修 model。
 - **Sheet**:A4/A3 自動排版 fit(統一比例、視圖對齊),或 1 max unit = 1 pt 原大輸出。
+
+## 工作流程:入 Adobe Illustrator
+
+匯出嘅嘢全部係原生可編輯 vector,唔使 image trace:
+
+1. Illustrator:**File > Open** 開個 `.svg`(或者拖入 artboard)
+2. 每個 view 係一個命名 group(`FRONT`、`RIGHT`、`TOP`…);model 線、尺寸線/箭嘴、尺寸數字全部係獨立可編輯物件(數字係真 text object)
+3. 任改:改線粗、搬/換尺寸 label、刪走唔要嘅 view、加自己嘅標註
+4. **File > Save As** → `.ai` 存返原生格式
+
+注意:尺寸數字係普通文字,唔係動態量度 — 如果之後喺 Illustrator 縮放張圖,數字要自己改(或者重新 export 揀過 unit label)。
 
 ## 喺 Illustrator 入面
 

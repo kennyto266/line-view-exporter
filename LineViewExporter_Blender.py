@@ -18,7 +18,7 @@
 bl_info = {
     "name": "Line View Exporter (SVG for Illustrator)",
     "author": "kennyto266",
-    "version": (1, 0, 0),
+    "version": (1, 2, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar (N key) > Line View",
     "description": "Export Front/Right/Top orthographic line views of meshes "
@@ -142,6 +142,22 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
             ('NONE', "No Fit (1:1)", "1 scene unit = 1 pt, true-size output"),
         ],
         default='A4L')
+    min_pt: FloatProperty(
+        name="Drop Lines Shorter (pt)",
+        description="Skip segments smaller than this on the sheet (kills sub-pixel speckle)",
+        default=0.4, min=0.0, max=5.0)
+    draw_open: BoolProperty(
+        name="Open (Border) Edges",
+        description="Draw open/border edges; uncheck if a broken mesh floods the sheet",
+        default=True)
+    use_dims: BoolProperty(
+        name="Dimension Annotations",
+        description="Add engineering-style dimension lines (view width/height) with arrows and labels",
+        default=True)
+    unit_label: StringProperty(
+        name="Unit Label",
+        description="Text appended to dimension numbers, e.g. mm, cm, units",
+        default="units", maxlen=16)
 
     def draw(self, context):
         layout = self.layout
@@ -162,8 +178,15 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
         box.label(text="Line Extraction")
         box.prop(self, "crease_angle")
         box.prop(self, "stroke_weight")
+        box.prop(self, "min_pt")
+        box.prop(self, "draw_open")
         box.prop(self, "include_hidden")
         box.prop(self, "flip_facing")
+
+        box = layout.box()
+        box.label(text="Dimensions")
+        box.prop(self, "use_dims")
+        box.prop(self, "unit_label")
 
         box = layout.box()
         box.label(text="Sheet")
@@ -224,9 +247,10 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                     vis_e = False
                     hid_e = False
                     if len(ef) == 1:
-                        vis_e = c1
-                        if self.include_hidden:
-                            hid_e = not c1
+                        if self.draw_open:
+                            vis_e = c1
+                            if self.include_hidden:
+                                hid_e = not c1
                     else:
                         if c1 != c2:
                             vis_e = True  # silhouette
@@ -312,12 +336,18 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
             for nm, segs in entries:
                 if not segs:
                     continue
-                out.append("<path id='%s' d='" % _xml_escape(nm))
+                body = []
                 for (x1, y1), (x2, y2) in segs:
-                    out.append("M%.3f %.3f L%.3f %.3f " % (
+                    if self.min_pt > 0.0:
+                        if math.hypot((x2 - x1) * sc, (y2 - y1) * sc) < self.min_pt:
+                            continue
+                    body.append("M%.3f %.3f L%.3f %.3f " % (
                         x1 * sc + ox, y1 * sc + oy,
                         x2 * sc + ox, y2 * sc + oy))
-                out.append("'/>\n")
+                if body:
+                    out.append("<path id='%s' d='" % _xml_escape(nm))
+                    out.append(''.join(body))
+                    out.append("'/>\n")
 
         for v in views:
             sc = v['sc']
@@ -343,6 +373,63 @@ class LINEVIEW_OT_export_svg(Operator, ExportHelper):
                 "<text x='%.3f' y='%.3f' font-family='Arial' font-size='9' "
                 "text-anchor='middle' fill='#000000'>%s</text>\n"
                 % (lx, ly, v['name']))
+
+            # engineering-style dimensions for this view (width below, height left)
+            if self.use_dims:
+                x0 = v['bb'][0] * sc + ox
+                x1 = v['bb'][2] * sc + ox
+                y0 = v['bb'][1] * sc + oy
+                y1 = v['bb'][3] * sc + oy
+                dimcol = '#555555'
+                ulab = _xml_escape(self.unit_label)
+                wu = v['bb'][2] - v['bb'][0]
+                hu = v['bb'][3] - v['bb'][1]
+
+                def _arrow(tx, ty, ux, uy):
+                    bx2 = tx - ux * 7.0
+                    by2 = ty - uy * 7.0
+                    px2 = -uy * 2.2
+                    py2 = ux * 2.2
+                    out.append(
+                        "<path d='M%.3f %.3f L%.3f %.3f L%.3f %.3f Z' fill='%s'/>\n"
+                        % (tx, ty, bx2 + px2, by2 + py2, bx2 - px2, by2 - py2, dimcol))
+
+                if x1 - x0 > 26.0:
+                    dly = y0 - 12.0
+                    out.append("<g id='%s_dimW' stroke='%s' stroke-width='0.3' fill='none'>\n"
+                               % (v['name'], dimcol))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (x0, y0 + 1.5, x0, dly - 2.0))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (x1, y0 + 1.5, x1, dly - 2.0))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (x0, dly, x1, dly))
+                    out.append("</g>\n")
+                    _arrow(x0, dly, -1.0, 0.0)
+                    _arrow(x1, dly, 1.0, 0.0)
+                    out.append(
+                        "<text x='%.3f' y='%.3f' font-family='Arial' font-size='7' "
+                        "text-anchor='middle' fill='%s'>%.1f %s</text>\n"
+                        % ((x0 + x1) / 2.0, dly - 3.0, dimcol, wu, ulab))
+                if y1 - y0 > 26.0:
+                    dlx = x0 - 12.0
+                    out.append("<g id='%s_dimH' stroke='%s' stroke-width='0.3' fill='none'>\n"
+                               % (v['name'], dimcol))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (x0 - 1.5, y0, dlx - 2.0, y0))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (x0 - 1.5, y1, dlx - 2.0, y1))
+                    out.append("<line x1='%.3f' y1='%.3f' x2='%.3f' y2='%.3f'/>\n"
+                               % (dlx, y0, dlx, y1))
+                    out.append("</g>\n")
+                    _arrow(dlx, y0, 0.0, -1.0)
+                    _arrow(dlx, y1, 0.0, 1.0)
+                    out.append(
+                        "<text x='%.3f' y='%.3f' transform='rotate(-90 %.3f %.3f)' "
+                        "font-family='Arial' font-size='7' text-anchor='middle' "
+                        "fill='%s'>%.1f %s</text>\n"
+                        % (dlx - 3.0, (y0 + y1) / 2.0, dlx - 3.0, (y0 + y1) / 2.0,
+                           dimcol, hu, ulab))
 
         # scale bar
         nice_l = 1.0
