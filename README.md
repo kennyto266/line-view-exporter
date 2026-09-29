@@ -1,16 +1,38 @@
-# LineViewExporter for 3ds Max
+# LineViewExporter for 3ds Max / Blender
 
-**Export Front / Side / Top orthographic line views of any 3ds Max model as fully editable vector paths for Adobe Illustrator.**
+**Export Front / Side / Top orthographic line views of any 3D model as fully editable vector paths for Adobe Illustrator.**
 
-A single MAXScript file — no compiling, no SDK, no install. Drag it into 3ds Max, click Export, open the SVG in Illustrator. Every line is a real vector path you can edit (anchors, stroke weight, dashes, colors).
+Two versions of the same tool live in this repo:
 
-## Quick Start
+| File | For | Platform |
+|---|---|---|
+| `LineViewExporter.ms` | 3ds Max (MAXScript, drag-and-drop) | Windows only |
+| `LineViewExporter_Blender.py` | Blender (addon) | **macOS** / Windows / Linux |
+
+## I'm on a Mac — what do I use?
+
+3ds Max has **no macOS version**, so the `.ms` script cannot run on a Mac. You have two easy routes:
+
+1. **You just need the line drawing** (no 3D app needed): the exported `.svg` is cross-platform — whoever has the model on Windows can export it and send you the file; it opens in Illustrator on the Mac as fully editable paths.
+2. **You want to export it yourself on the Mac**: use the **Blender addon** in this repo — same algorithm, same output:
+   1. Install [Blender](https://www.blender.org/download/) (free, native macOS)
+   2. Bring your model over (FBX / OBJ / glTF export from 3ds Max, or open a `.blend`)
+   3. In Blender: **Edit > Preferences > Add-ons > Install** (called *Install from Disk* in 4.2+) → pick `LineViewExporter_Blender.py` → enable **Import-Export: Line View Exporter**
+   4. Select your objects (no selection = all visible meshes), press **N** in the 3D viewport → **Line View** tab → **Export Line Views SVG**
+
+## Quick Start (3ds Max, Windows)
 
 1. Open your model scene in 3ds Max (2014–2026).
 2. Drag `LineViewExporter.ms` into any viewport → a dialog opens.
 3. (Optional) Select the objects to export — no selection = all visible, unfrozen geometry.
 4. Pick views (Front / Right / Top by default; Back / Left / Bottom optional) → **EXPORT LINE VIEWS**.
 5. Open the resulting `.svg` in Adobe Illustrator. Done — it's all editable vectors.
+
+## Quick Start (Blender, any platform)
+
+1. Install the addon as described above.
+2. Select objects (or leave nothing selected to use all visible meshes).
+3. `N` sidebar → **Line View** → **Export Line Views SVG** — same options as the Max version, same blueprint-style SVG output.
 
 ## What it does
 
@@ -61,9 +83,27 @@ A single MAXScript file — no compiling, no SDK, no install. Drag it into 3ds M
 
 # 繁體中文說明
 
-**一行 MAXScript 檔案 — 唔使編譯、唔使 SDK、唔使安裝。** 拖入 3ds Max、撳 Export、用 Illustrator 開個 SVG,所有線都係真正可編輯嘅 vector path(錨點、線粗、虛線、顏色任改)。
+**呢個 repo 有兩個版本,功能同輸出完全一樣:**
 
-## 快速開始
+| 檔案 | 適用軟件 | 平台 |
+|---|---|---|
+| `LineViewExporter.ms` | 3ds Max(MAXScript,拖入即用) | 只限 Windows |
+| `LineViewExporter_Blender.py` | Blender(addon) | **macOS** / Windows / Linux |
+
+拖入 3ds Max、撳 Export、用 Illustrator 開個 SVG,所有線都係真正可編輯嘅 vector path(錨點、線粗、虛線、顏色任改)。
+
+## Mac 用家睇呢度
+
+3ds Max **冇 macOS 版**,`.ms` script 喺 Mac 行唔到。兩條路:
+
+1. **只係要張線圖**:匯出嘅 `.svg` 係跨平台檔案 — 有 model 嗰位朋友(Windows)匯出之後傳個檔俾你,Mac 上 Illustrator 直接開,完全可編輯。
+2. **想喺 Mac 自己匯出**:用呢個 repo 嘅 **Blender addon**(Blender 免費、Mac 原生):
+   1. 裝 [Blender](https://www.blender.org/download/)
+   2. 個 model 用 FBX / OBJ / glTF 由 3ds Max 帶過去(或者直接開 `.blend`)
+   3. Blender:**Edit > Preferences > Add-ons > Install**(4.2+ 叫 *Install from Disk*)→ 揀 `LineViewExporter_Blender.py` → 剔啟用 **Import-Export: Line View Exporter**
+   4. 揀住啲物件(唔揀 = 全部可見 mesh)→ 3D viewport 撳 **N** → **Line View** tab → **Export Line Views SVG**
+
+## 快速開始(3ds Max,Windows)
 
 1. 喺 3ds Max 開住你個 model 場景
 2. 將 `LineViewExporter.ms` **拖入任何一個 viewport** → 自動彈出對話框
