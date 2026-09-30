@@ -2,6 +2,10 @@
 
 **Export Front / Side / Top orthographic line views of any 3D model as fully editable vector paths for Adobe Illustrator.**
 
+> 📢 **公司同事 / 新手看這裡**:只需下載 **一個檔案** `LineViewExporter.ms`(在 [Releases](https://github.com/kennyto266/line-view-exporter/releases) 頁直接下載),拖進 3ds Max 就能用 — **不用安裝、不用管理員權限**。一步一步教學:[使用教學-超簡單.md](使用教學-超簡單.md)
+>
+> 📢 **Office use / beginners**: you only need the single file `LineViewExporter.ms` (download it straight from [Releases](https://github.com/kennyto266/line-view-exporter/releases)) — drag it into 3ds Max and go. No install, no admin rights. Step-by-step guide (Chinese): [使用教學-超簡單.md](使用教學-超簡單.md)
+
 Two versions of the same tool live in this repo:
 
 | File | For | Platform |
